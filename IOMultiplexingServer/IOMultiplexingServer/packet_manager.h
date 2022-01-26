@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 
+
+#pragma warning(disable:4996)
+
 class Packet {
 public:
 

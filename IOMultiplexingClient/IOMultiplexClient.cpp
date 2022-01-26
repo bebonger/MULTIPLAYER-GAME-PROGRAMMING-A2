@@ -11,6 +11,7 @@ IOMultiplexClient::~IOMultiplexClient()
 
 int IOMultiplexClient::startup_client(int argc, char** argv)
 {
+
 	printf("Destination IP Address [%s], Port number [%d]\n", IPAddress, Port);
 
 	if (WSAStartup(MAKEWORD(2, 2), &WsaData) != 0)
@@ -47,8 +48,13 @@ int IOMultiplexClient::startup_client(int argc, char** argv)
 	FD_ZERO(&ReadFds);
 	FD_SET(ConnectSocket, &ReadFds);
 
+	// Set Username
+	printf("Enter Username : ");
+	// memset(ClientID, '\0', 256);
+	// MessageLen = 0;
 
-	printf("enter messages : ");
+	// std::cin >> ClientID;
+	memset(ClientID, '\0', 256);
 	memset(Message, '\0', BUFSIZE);
 	MessageLen = 0;
 }
@@ -59,14 +65,31 @@ int IOMultiplexClient::run_client()
 	{
 		if (_kbhit())
 		{ // To check keyboard input.
-			Message[MessageLen] = _getch();
+			char character = _getch();
+			Message[MessageLen] = character;
 			if (('\n' == Message[MessageLen]) || ('\r' == Message[MessageLen]))
 			{ // Send the message to server.
 				putchar('\n');
 				MessageLen++;
 				Message[MessageLen] = '\0';
 
-				Return = send(ConnectSocket, Message, MessageLen, 0);
+				// tell the server to create a user
+				if (ClientID[0] == '\0') {
+					Message[MessageLen - 1] = '\0';
+					strcpy_s(ClientID, Message);
+					Packet MSGTYPE_Packet;
+					MSGTYPE_Packet << "MSGTYPE=SETUSER";
+					MSGTYPE_Packet.Encode(ClientID);
+					Return = send(ConnectSocket, MSGTYPE_Packet.PacketData, MSGTYPE_Packet.PacketLength, 0);
+
+					system("cls");
+
+					//printf("enter messages : ");
+
+				}	
+				else 
+					Return = send_msg(Message);
+
 				if (Return == SOCKET_ERROR)
 				{
 					printf("send failed: %d\n", WSAGetLastError());
@@ -74,10 +97,19 @@ int IOMultiplexClient::run_client()
 					WSACleanup();
 					return 1;
 				}
-				printf("Bytes Sent: %ld\n", Return);
+				// printf("Bytes Sent: %ld\n", Return);
 
 				MessageLen = 0;
 				memset(Message, '\0', BUFSIZE);
+			}
+			else if (Message[MessageLen] == '\b')
+			{
+				putchar(Message[MessageLen]);
+				Message[MessageLen] = '\0';
+				if (MessageLen != 0)
+					Message[MessageLen - 1] = '\0';
+
+				MessageLen--;
 			}
 			else
 			{
@@ -103,28 +135,26 @@ int IOMultiplexClient::run_client()
 			}
 			else if (0 < Return)
 			{
-				memset(Message, '\0', BUFSIZE);
-				printf("Select Processed... Something to read\n");
-				Return = recv(ConnectSocket, Message, BUFSIZE, 0);
+				memset(ReadBuffer, '\0', BUFSIZE);
+				// printf("Select Processed... Something to read\n");
+				Return = recv(ConnectSocket, ReadBuffer, BUFSIZE, 0);
 				if (0 > Return)
 				{ // recv() function returned error.
 					closesocket(ConnectSocket);
 					// printf("Exceptional error :Socket Handle [%d]\n", ConnectSocket);
 
-					printf(RED, "Exceptional error :Socket Handle [%d]\n", ConnectSocket);
+					printf("%sExceptional error :Socket Handle [%d]%s\n", RED, ConnectSocket, RESET);
 					return 1;
 				}
 				else if (0 == Return)
 				{ // Connection closed message has arrived.
 					closesocket(ConnectSocket);
-					printf(RED, "Connection closed :Socket Handle [%d]\n", ConnectSocket);
+					printf("%sConnection closed :Socket Handle [%d]%s\n", RED, ConnectSocket, RESET);
 					return 0;
 				}
 				else
-				{ // Message received.
-					printf("Bytes received   : %d\n", Return);
-					printf("Message received : %s\n", Message);
-					printf("enter messages : ");
+				{ 
+					process_incoming_messages();
 				}
 			}
 		}
@@ -135,14 +165,126 @@ int IOMultiplexClient::run_client()
 	return 0;
 }
 
-int IOMultiplexClient::packet_add_data(const char DataName[], const int Value)
+
+int IOMultiplexClient::send_msg(std::string _msg)
 {
-	// return PacketManager::packet_add_data(PacketBuffer, DataName, Value);
-	return 0;
+ 	Packet packet;
+
+	// Is msg a command
+	if (_msg[0] == '!')
+	{
+		_msg.pop_back();
+		if (_msg == "!help") {
+			packet << "MSGTYPE=CMD_HELP";
+		}
+
+		if (CurrentRoomName.empty()) {
+			if (_msg == "!rooms") {
+				packet << "MSGTYPE=CMD_ROOMLIST";
+			}
+			else if (_msg.find("create ", 1) == 1) {
+				packet << "MSGTYPE=CMD_CREATE_ROOM";
+				std::string roomName;
+				for (int i = 8; i < _msg.length(); ++i) {
+					if (_msg[i] == ' ' || _msg[i] == '\r' || _msg[i] == '\n')
+						break;
+
+					roomName.push_back(_msg[i]);
+				}
+
+				if (roomName.empty()) {
+					printf("Empty Room Name\n");
+					return 0;
+				}
+
+				packet << ("ROOM_NAME=" + roomName).c_str();
+				CurrentRoomName = roomName;
+				system("cls");
+				printf("<Created room \"%s\">\nStart Chatting!\n", CurrentRoomName);
+
+
+			}
+			else if (_msg.find("join ", 1) == 1) {
+				packet << "MSGTYPE=CMD_JOIN_ROOM";
+				std::string roomName;
+
+				for (int i = 6; i < _msg.length(); ++i) {
+					if (_msg[i] == ' ' || _msg[i] == '\r' || _msg[i] == '\n')
+						break;
+
+					roomName.push_back(_msg[i]);
+				}
+				packet << ("ROOM_NAME=" + roomName).c_str();
+				printf("<Attempting to join room \"%s\">\n", roomName.c_str());
+			}
+		}
+		else {
+			if (_msg == "!leave") {
+				packet << "MSGTYPE=CMD_LEAVE_ROOM";
+				system("cls");
+			}
+			else if (_msg == "!users") {
+				packet << "MSGTYPE=CMD_USER_LIST";
+			}
+			else if (_msg.find("whisper ", 1) == 1) {
+				packet << "MSGTYPE=CMD_WHISPER";
+				std::string ReceiverSocketID;
+				int socketIDLength = 0;
+
+				for (int i = 9; i < _msg.length(); ++i) {
+					if (_msg[i] == ' ' || _msg[i] == '\r' || _msg[i] == '\n')
+						break;
+
+					socketIDLength++;
+					ReceiverSocketID.push_back(_msg[i]);
+				}
+				packet << ("RECEIVER=" + ReceiverSocketID).c_str();
+
+				std::string msgBuffer;
+				for (int i = 10 + socketIDLength; i < _msg.length(); ++i) {
+					msgBuffer.push_back(_msg[i]);
+				}
+
+				packet << ("MESSAGE=\"" + msgBuffer + "\"").c_str();
+			}
+		}
+	}
+	else {
+		// Message
+		packet << "MSGTYPE=MESSAGE";
+		packet << ("MSG=\"" + _msg + "\"").c_str();
+	}
+	
+	packet.Encode(ClientID);
+	return send(ConnectSocket, packet.PacketData,packet.PacketLength, 0);
 }
 
-int IOMultiplexClient::packet_add_data(const char DataName[], const char Value[])
+int IOMultiplexClient::send_packet(Packet _packet)
 {
-	// return PacketManager::packet_add_data(PacketBuffer, DataName, Value);
-	return 0;
+	_packet.Encode(ClientID);
+	return send(ConnectSocket, _packet.PacketData, strlen(_packet.PacketData), 0);
+}
+
+void IOMultiplexClient::process_incoming_messages()
+{
+	// char DisplayBuffer[BUFSIZE] = { '\0' };
+	if (PacketManager::decodable(ReadBuffer)) {
+		Packet packet;
+		strcpy_s(packet.PacketData, ReadBuffer);
+		packet.Decode();
+
+		// Retrieve the message type/command
+		char MSGTYPE[BUFSIZE] = { '\0' };
+		PacketManager::packet_parse_data(packet.PacketData, "MSGTYPE", MSGTYPE, packet.PacketLength);
+
+		if (strcmp(MSGTYPE, "JOINED_ROOM") == 0)
+		{
+			char RoomName[BUFSIZE] = { '\0' };
+			PacketManager::packet_parse_data(packet.PacketData, "ROOM_NAME", RoomName, packet.PacketLength);
+			CurrentRoomName = RoomName;
+			system("cls");
+		}
+	}
+	else 
+		printf("%s\n", ReadBuffer);
 }

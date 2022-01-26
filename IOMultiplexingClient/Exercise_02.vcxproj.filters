@@ -21,6 +21,9 @@
     <ClCompile Include="IOMultiplexClient.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="packet_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IOMultiplexClient.h">

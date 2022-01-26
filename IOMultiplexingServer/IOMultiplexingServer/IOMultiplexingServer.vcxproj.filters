@@ -21,9 +21,18 @@
     <ClCompile Include="IOMultiplexServer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="packet_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IOMultiplexServer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="packet_manager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="color.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

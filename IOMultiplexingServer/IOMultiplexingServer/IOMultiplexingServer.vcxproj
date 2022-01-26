@@ -141,9 +141,12 @@
   <ItemGroup>
     <ClCompile Include="IOMultiplexing_Server_Whisper.cpp" />
     <ClCompile Include="IOMultiplexServer.cpp" />
+    <ClCompile Include="packet_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="color.h" />
     <ClInclude Include="IOMultiplexServer.h" />
+    <ClInclude Include="packet_manager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

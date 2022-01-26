@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="IOMultiplexClient.cpp" />
     <ClCompile Include="IOMultiplexing_Client.cpp" />
+    <ClCompile Include="packet_manager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="color.h" />
