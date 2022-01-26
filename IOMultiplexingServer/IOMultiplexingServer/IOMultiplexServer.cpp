@@ -97,13 +97,16 @@ void IOMultiplexServer::whisper_to_one(SOCKET SenderSocket, SOCKET ReceiverSocke
 
 }
 
-void IOMultiplexServer::send_to_all(fd_set ReadFds, char Message[], int MessageLength)
+void IOMultiplexServer::send_to_all(fd_set ReadFds, char Message[], SOCKET SenderSocket)
 {
 	int i;
-
+	time_t rawtime = time(NULL);
+	struct tm* ptm = localtime(&rawtime);
+	char BroadcastBuffer[BUFSIZE] = {'\0'};
+	sprintf(BroadcastBuffer, "%s [%02d:%02d:%02d] %s broadcasts to everyone: %s %s", BOLDGREEN, ptm->tm_hour, ptm->tm_min, ptm->tm_sec, UserList[SenderSocket]->UserID, Message, RESET);
 	for (i = 1; i < ReadFds.fd_count; ++i)
 	{
-		send(ReadFds.fd_array[i], Message, MessageLength, 0);
+		send(ReadFds.fd_array[i], BroadcastBuffer, strlen(BroadcastBuffer), 0);
 	}
 }
 
@@ -266,6 +269,12 @@ void IOMultiplexServer::process_incoming_messages(SOCKET ClientSocket)
 	}
 	else if (strcmp(MSGTYPE, "CMD_HELP") == 0) {
 		send_help_msg(ClientSocket);
+	}
+	else if (strcmp(MSGTYPE, "CMD_BROADCAST") == 0) {
+		char MSGBuffer[BUFSIZE] = { '\0' };
+		int MessageLen = PacketManager::packet_parse_data(RetrieveBuffer, "MESSAGE", MSGBuffer, PacketLength);
+
+		send_to_all(ReadFds, MSGBuffer, ClientSocket);
 	}
 	else if (!UserList[ClientSocket]->currentRoom) {
 		if (strcmp(MSGTYPE, "CMD_ROOMLIST") == 0) {

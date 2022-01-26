@@ -11,7 +11,7 @@ IOMultiplexClient::~IOMultiplexClient()
 
 int IOMultiplexClient::startup_client(int argc, char** argv)
 {
-
+	hasBroadcasted = false;
 	printf("Destination IP Address [%s], Port number [%d]\n", IPAddress, Port);
 
 	if (WSAStartup(MAKEWORD(2, 2), &WsaData) != 0)
@@ -106,10 +106,10 @@ int IOMultiplexClient::run_client()
 			{
 				putchar(Message[MessageLen]);
 				Message[MessageLen] = '\0';
-				if (MessageLen != 0)
+				if (MessageLen != 0) {
 					Message[MessageLen - 1] = '\0';
-
-				MessageLen--;
+					MessageLen--;
+				}
 			}
 			else
 			{
@@ -169,6 +169,9 @@ int IOMultiplexClient::run_client()
 int IOMultiplexClient::send_msg(std::string _msg)
 {
  	Packet packet;
+	
+	if (_msg[0] == '\r')
+		return 1;
 
 	// Is msg a command
 	if (_msg[0] == '!')
@@ -176,6 +179,15 @@ int IOMultiplexClient::send_msg(std::string _msg)
 		_msg.pop_back();
 		if (_msg == "!help") {
 			packet << "MSGTYPE=CMD_HELP";
+		}
+		else if (_msg.find("broadcast ", 1) == 1) {
+		packet << "MSGTYPE=CMD_BROADCAST";
+			std::string msgBuffer;
+			for (int i = 11; i < _msg.length(); ++i) {
+				msgBuffer.push_back(_msg[i]);
+			}
+
+			packet << ("MESSAGE=\"" + msgBuffer + "\"").c_str();
 		}
 
 		if (CurrentRoomName.empty()) {
@@ -221,6 +233,7 @@ int IOMultiplexClient::send_msg(std::string _msg)
 		else {
 			if (_msg == "!leave") {
 				packet << "MSGTYPE=CMD_LEAVE_ROOM";
+				CurrentRoomName = "";
 				system("cls");
 			}
 			else if (_msg == "!users") {

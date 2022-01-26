@@ -27,6 +27,7 @@ private:
 
 	std::string  CurrentRoomName;
 	char		 ClientID[256];
+	bool		 hasBroadcasted;
 
 	int          Port = PORT_NUMBER;
 	char         IPAddress[16] = IP_ADDRESS;

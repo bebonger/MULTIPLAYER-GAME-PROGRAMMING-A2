@@ -119,7 +119,7 @@ public:
 	void session_info_message(fd_set ReadFds, SOCKET ClientSocket);
 	void send_notice_message(fd_set ReadFds, SOCKET ClientSocket);
 	void whisper_to_one(SOCKET SenderSocket, SOCKET ReceiverSocket, char Message[], int MessageLength);
-	void send_to_all(fd_set ReadFds, char Message[], int MessageLength);
+	void send_to_all(fd_set ReadFds, char Message[], SOCKET SenderSocket);
 	void send_to_room(RoomInfo* room, char Message[], int MessageLength);
 	
 	bool room_exists(char RoomName[]);
